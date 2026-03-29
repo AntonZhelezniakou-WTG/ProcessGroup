@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>net10.0</TargetFramework>
+		<AssemblyName>ProcessGroup</AssemblyName>
+
+		<PackageId>ProcessGroup</PackageId>
+		<Version>1.0.0</Version>
+		<Description>Cross-platform child process lifetime management for .NET.</Description>
+	</PropertyGroup>
+
+</Project>
