@@ -1,0 +1,4 @@
+<Solution>
+	<Project Path="src/ProcessGroup/ProcessGroup.csproj" />
+	<Project Path="tests/ProcessGroup.Tests/ProcessGroup.Tests.csproj" />
+</Solution>
