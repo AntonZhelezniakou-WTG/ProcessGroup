@@ -10,16 +10,14 @@ insert_final_newline = true
 trim_trailing_whitespace = true
 
 [*.{cs,csx}]
-csharp_style_namespace_declarations = file_scoped:suggestion
-csharp_using_directive_placement = outside_namespace:suggestion
-
 # C# - latest language features
+csharp_style_namespace_declarations = file_scoped:warning
+csharp_using_directive_placement = outside_namespace:warning
 csharp_style_prefer_primary_constructors = true:suggestion
 csharp_style_prefer_method_group_conversion = true:suggestion
 csharp_style_prefer_top_level_statements = true:suggestion
 csharp_style_prefer_null_check_over_type_check = true:suggestion
 csharp_prefer_simple_default_expression = true:suggestion
-csharp_style_namespace_declarations = file_scoped:warning
 
 # Expressions
 dotnet_style_prefer_auto_properties = true:suggestion
@@ -51,11 +49,11 @@ dotnet_naming_rule.private_fields_camel_case.severity = suggestion
 dotnet_naming_rule.private_fields_camel_case.symbols = private_fields
 dotnet_naming_rule.private_fields_camel_case.style = camel_case_underscore_prefix
 dotnet_naming_symbols.private_fields.applicable_kinds = field
-dotnet_naming_symbols.private_fields.applicable_accessibilities = private, protected
+dotnet_naming_symbols.private_fields.applicable_accessibilities = private
 dotnet_naming_style.camel_case_underscore_prefix.required_prefix = _
 dotnet_naming_style.camel_case_underscore_prefix.capitalization = camel_case
 
-# Modifiers
+# Pattern matching / expressions
 csharp_style_prefer_switch_expression = true:suggestion
 csharp_style_prefer_pattern_matching = true:suggestion
 csharp_style_pattern_matching_over_is_with_cast_check = true:suggestion
@@ -68,7 +66,6 @@ csharp_style_prefer_readonly_struct = true:suggestion
 csharp_style_prefer_readonly_struct_member = true:suggestion
 
 # Using directives
-csharp_using_directive_placement = outside_namespace:warning
 dotnet_sort_system_directives_first = true
 dotnet_separate_import_directive_groups = false
 
@@ -77,9 +74,18 @@ end_of_line = crlf
 tab_width = 2
 
 [*.{xml,csproj,props,targets,config}]
+indent_style = tab
+indent_size = 2
 tab_width = 2
 
-[*.{json,yaml,yml}]
+[*.json]
+indent_style = tab
+indent_size = 2
+tab_width = 2
+
+[*.{yaml,yml}]
+indent_style = space
+indent_size = 2
 tab_width = 2
 
 [*.md]
