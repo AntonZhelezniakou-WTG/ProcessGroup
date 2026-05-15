@@ -2,18 +2,20 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
+using Microsoft.Win32.SafeHandles;
+using static ProcessGroup.Kernel32;
 
 namespace ProcessGroup;
 
 [SupportedOSPlatform("windows")]
 sealed class WindowsJobObject : IProcessGroupImpl
 {
-	readonly nint _jobHandle;
+	readonly SafeFileHandle _jobHandle;
 
 	public WindowsJobObject()
 	{
 		_jobHandle = CreateJobObjectW(nint.Zero, null);
-		if (_jobHandle == nint.Zero)
+		if (_jobHandle.IsInvalid)
 			throw new Win32Exception(Marshal.GetLastWin32Error());
 
 		var info = new JOBOBJECT_EXTENDED_LIMIT_INFORMATION
@@ -24,7 +26,7 @@ sealed class WindowsJobObject : IProcessGroupImpl
 			},
 		};
 
-		int len = Marshal.SizeOf<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>();
+		var len = (uint)Marshal.SizeOf<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>();
 		if (!SetInformationJobObject(_jobHandle, JobObjectInfoClass.ExtendedLimitInformation, ref info, len))
 			throw new Win32Exception(Marshal.GetLastWin32Error());
 	}
@@ -33,85 +35,78 @@ sealed class WindowsJobObject : IProcessGroupImpl
 	{
 		var process = Process.Start(startInfo)
 			?? throw new InvalidOperationException("Failed to start process.");
-		AssignToJob(process);
-		return process;
+		try
+		{
+			AssignToJob(process);
+			return process;
+		}
+		catch
+		{
+			KillAndDispose(process);
+			throw;
+		}
 	}
 
 	public void Add(Process process) => AssignToJob(process);
 
-	public void TerminateAll() => TerminateJobObject(_jobHandle, 1);
-
-	public void Dispose()
+	public void TerminateAll()
 	{
-		if (_jobHandle != nint.Zero)
-			CloseHandle(_jobHandle);
+		if (!TerminateJobObject(_jobHandle, 1))
+			throw new Win32Exception(Marshal.GetLastWin32Error());
+	}
+
+	public ProcessGroupStats GetStats()
+	{
+		var accountingSize = (uint)Marshal.SizeOf<JOBOBJECT_BASIC_ACCOUNTING_INFORMATION>();
+		if (!QueryAccountingInformation(
+				_jobHandle,
+				JobObjectInfoClass.BasicAccountingInformation,
+				out var accounting,
+				accountingSize,
+				nint.Zero))
+			throw new Win32Exception(Marshal.GetLastWin32Error());
+
+		var limitsSize = (uint)Marshal.SizeOf<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>();
+		if (!QueryExtendedLimits(
+				_jobHandle,
+				JobObjectInfoClass.ExtendedLimitInformation,
+				out var limits,
+				limitsSize,
+				nint.Zero))
+			throw new Win32Exception(Marshal.GetLastWin32Error());
+
+		var cpuTicks = accounting.TotalUserTime + accounting.TotalKernelTime;
+		return new ProcessGroupStats(
+			ActiveProcessCount: (int)accounting.ActiveProcesses,
+			TotalCpuTime: TimeSpan.FromTicks(cpuTicks),
+			PeakMemoryBytes: (long)limits.PeakJobMemoryUsed);
+	}
+
+	public void Dispose() => _jobHandle.Dispose();
+
+	public ValueTask DisposeAsync()
+	{
+		_jobHandle.Dispose();
+		return ValueTask.CompletedTask;
 	}
 
 	void AssignToJob(Process process)
 	{
-		if (!AssignProcessToJobObject(_jobHandle, process.Handle))
+		if (!AssignProcessToJobObject(_jobHandle, process.SafeHandle))
 			throw new Win32Exception(Marshal.GetLastWin32Error());
 	}
 
-	const uint JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE = 0x2000;
-
-	enum JobObjectInfoClass
+	static void KillAndDispose(Process process)
 	{
-		ExtendedLimitInformation = 9,
+		try
+		{
+			process.Kill(entireProcessTree: true);
+		}
+		catch
+		{
+			// ignored
+		}
+
+		process.Dispose();
 	}
-
-	[StructLayout(LayoutKind.Sequential)]
-	struct JOBOBJECT_BASIC_LIMIT_INFORMATION
-	{
-		public long PerProcessUserTimeLimit;
-		public long PerJobUserTimeLimit;
-		public uint LimitFlags;
-		public nuint MinimumWorkingSetSize;
-		public nuint MaximumWorkingSetSize;
-		public uint ActiveProcessLimit;
-		public nint Affinity;
-		public uint PriorityClass;
-		public uint SchedulingClass;
-	}
-
-	[StructLayout(LayoutKind.Sequential)]
-	struct IO_COUNTERS
-	{
-		public ulong ReadOperationCount;
-		public ulong WriteOperationCount;
-		public ulong OtherOperationCount;
-		public ulong ReadTransferCount;
-		public ulong WriteTransferCount;
-		public ulong OtherTransferCount;
-	}
-
-	[StructLayout(LayoutKind.Sequential)]
-	struct JOBOBJECT_EXTENDED_LIMIT_INFORMATION
-	{
-		public JOBOBJECT_BASIC_LIMIT_INFORMATION BasicLimitInformation;
-		public IO_COUNTERS IoInfo;
-		public nuint ProcessMemoryLimit;
-		public nuint JobMemoryLimit;
-		public nuint PeakProcessMemoryUsed;
-		public nuint PeakJobMemoryUsed;
-	}
-
-	[DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-	static extern nint CreateJobObjectW(nint lpJobAttributes, string? lpName);
-
-	[DllImport("kernel32.dll", SetLastError = true)]
-	static extern bool SetInformationJobObject(
-		nint hJob,
-		JobObjectInfoClass infoClass,
-		ref JOBOBJECT_EXTENDED_LIMIT_INFORMATION info,
-		int cbInfoLength);
-
-	[DllImport("kernel32.dll", SetLastError = true)]
-	static extern bool AssignProcessToJobObject(nint hJob, nint hProcess);
-
-	[DllImport("kernel32.dll", SetLastError = true)]
-	static extern bool TerminateJobObject(nint hJob, uint uExitCode);
-
-	[DllImport("kernel32.dll", SetLastError = true)]
-	static extern bool CloseHandle(nint hObject);
 }

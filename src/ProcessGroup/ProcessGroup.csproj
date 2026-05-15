@@ -2,11 +2,39 @@
 
 	<PropertyGroup>
 		<TargetFramework>net10.0</TargetFramework>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 		<AssemblyName>ProcessGroup</AssemblyName>
 
 		<PackageId>ProcessGroup</PackageId>
 		<Version>1.0.0</Version>
-		<Description>Cross-platform child process lifetime management for .NET.</Description>
+		<Authors>Anton Zhelezniakou</Authors>
+		<Copyright>Copyright (c) 2026 Anton Zhelezniakou, WiseTech Global. All rights reserved.<IsAotCompatible>true</IsAotCompatible>, WiseTech Global</Copyright>
+		<Description>Cross-platform child process lifetime management for .NET. Ensures child processes are terminated when the parent exits — gracefully or via crash. Backed by Job Objects on Windows and POSIX process groups on Linux/macOS/FreeBSD. AOT-compatible.</Description>
+		<PackageTags>process;job-object;process-group;cross-platform;lifetime;child-process</PackageTags>
+		<PackageLicenseFile>LICENSE</PackageLicenseFile>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+
+		<PackageProjectUrl>https://github.com/AntonZhelezniakou-WTG/ProcessGroup</PackageProjectUrl>
+		<RepositoryUrl>https://github.com/AntonZhelezniakou-WTG/ProcessGroup</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+		<PublishRepositoryUrl>true</PublishRepositoryUrl>
+		<EmbedUntrackedSources>true</EmbedUntrackedSources>
+
+		<IsAotCompatible>true</IsAotCompatible>
+		<IncludeSymbols>true</IncludeSymbols>
+		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+
+		<Deterministic>true</Deterministic>
+		<ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
 	</PropertyGroup>
+
+	<ItemGroup>
+		<None Include="..\..\README.md" Pack="true" PackagePath="\" />
+		<None Include="..\..\LICENSE" Pack="true" PackagePath="\" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="All" />
+	</ItemGroup>
 
 </Project>

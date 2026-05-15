@@ -150,6 +150,81 @@ public class ProcessGroupTests
 		Assert.Throws<ArgumentNullException>(() => group.Start(null!));
 	}
 
+	[Test]
+	public void Start_WithCancelledToken_Throws()
+	{
+		using var group = new ProcessGroup();
+		using var cts = new CancellationTokenSource();
+		cts.Cancel();
+
+		Assert.Throws<OperationCanceledException>(() => group.Start(LongRunningProcess(), cts.Token));
+	}
+
+	[Test]
+	public void Start_CancellationAfterStart_KillsProcess()
+	{
+		using var group = new ProcessGroup();
+		using var cts = new CancellationTokenSource();
+
+		var process = group.Start(LongRunningProcess(), cts.Token);
+		Assert.That(process.HasExited, Is.False);
+
+		cts.Cancel();
+
+		Assert.That(process.WaitForExit(5_000), Is.True);
+	}
+
+	[Test]
+	public async Task DisposeAsync_TerminatesStartedProcess()
+	{
+		Process process;
+		await using (var group = new ProcessGroup())
+		{
+			process = group.Start(LongRunningProcess());
+			Assert.That(process.HasExited, Is.False);
+		}
+
+		Assert.That(process.WaitForExit(5_000), Is.True);
+	}
+
+	[Test]
+	public async Task DisposeAsync_DoubleCall_DoesNotThrow()
+	{
+		var group = new ProcessGroup();
+		await group.DisposeAsync();
+		await group.DisposeAsync();
+	}
+
+	[Test]
+	public void GetStats_OnEmptyGroup_ReturnsZeros()
+	{
+		using var group = new ProcessGroup();
+
+		var stats = group.GetStats();
+
+		Assert.That(stats.ActiveProcessCount, Is.Zero);
+	}
+
+	[Test]
+	public void GetStats_WithActiveProcess_ReturnsAtLeastOne()
+	{
+		using var group = new ProcessGroup();
+		group.Start(LongRunningProcess());
+
+		var stats = group.GetStats();
+
+		Assert.That(stats.ActiveProcessCount, Is.GreaterThanOrEqualTo(1));
+	}
+
+	[Test]
+	public void GetStats_AfterDispose_Throws()
+	{
+		var group = new ProcessGroup();
+		group.Dispose();
+
+		Assert.Throws<ObjectDisposedException>(() => group.GetStats());
+	}
+
 	static ProcessStartInfo LongRunningProcess()
 		=> OperatingSystem.IsWindows()
 			? new ProcessStartInfo("ping", ["-n", "9999", "127.0.0.1"]) {
