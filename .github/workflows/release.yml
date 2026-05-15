@@ -1,0 +1,99 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Version bump type'
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+        default: 'patch'
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Determine next version
+        id: version
+        run: |
+          set -euo pipefail
+          CURRENT=$(grep -oP '(?<=<Version>)[^<]+' src/ProcessGroup/ProcessGroup.csproj | head -n1)
+          if [[ ! "$CURRENT" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Could not parse current version from csproj (got: '$CURRENT')"
+            exit 1
+          fi
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+          case "${{ inputs.bump }}" in
+            major) NEW="$((MAJOR+1)).0.0" ;;
+            minor) NEW="${MAJOR}.$((MINOR+1)).0" ;;
+            patch) NEW="${MAJOR}.${MINOR}.$((PATCH+1))" ;;
+          esac
+          echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
+          echo "version=$NEW" >> "$GITHUB_OUTPUT"
+          echo "tag=v$NEW" >> "$GITHUB_OUTPUT"
+          echo "Bumping $CURRENT → $NEW"
+
+      - name: Verify tag does not exist
+        run: |
+          if git rev-parse "${{ steps.version.outputs.tag }}" >/dev/null 2>&1; then
+            echo "::error::Tag ${{ steps.version.outputs.tag }} already exists"
+            exit 1
+          fi
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore --configuration Release /p:Version=${{ steps.version.outputs.version }}
+
+      - name: Test
+        run: dotnet test --no-build --configuration Release
+
+      - name: Pack
+        run: dotnet pack src/ProcessGroup/ProcessGroup.csproj --no-build --configuration Release --output ./artifacts /p:Version=${{ steps.version.outputs.version }}
+
+      - name: Push to GitHub Packages
+        run: dotnet nuget push "./artifacts/*.nupkg" --source "https://nuget.pkg.github.com/AntonZhelezniakou-WTG/index.json" --api-key ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Bump version in csproj
+        run: sed -i "s|<Version>${{ steps.version.outputs.current }}</Version>|<Version>${{ steps.version.outputs.version }}</Version>|" src/ProcessGroup/ProcessGroup.csproj
+
+      - name: Commit, tag, push
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/ProcessGroup/ProcessGroup.csproj
+          git commit -m "Release ${{ steps.version.outputs.tag }}"
+          git tag "${{ steps.version.outputs.tag }}"
+          git push --atomic origin HEAD:refs/heads/main "${{ steps.version.outputs.tag }}"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ steps.version.outputs.tag }}" \
+            --title "${{ steps.version.outputs.tag }}" \
+            --generate-notes \
+            ./artifacts/*.nupkg ./artifacts/*.snupkg
