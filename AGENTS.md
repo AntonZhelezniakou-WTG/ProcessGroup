@@ -140,7 +140,7 @@
 
 - Agents must not create commits.
 - Agents must not push changes.
-- Do not revert user changes unless explicitly requested.
+- Do not revert user changes unless the user explicitly agrees to this.
 - Do not rewrite unrelated files.
 
 ## Command Conventions
