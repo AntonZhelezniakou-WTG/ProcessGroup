@@ -4,21 +4,21 @@
 		<TargetFramework>net10.0</TargetFramework>
 		<IsPackable>false</IsPackable>
 		<NoWarn>$(NoWarn);CA1707</NoWarn>
+		<AssemblySearchPaths>$(AssemblySearchPaths);..\..\src\ProcessGroup\bin\$(Configuration)\$(TargetFramework)</AssemblySearchPaths>
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="coverlet.collector" />
 		<PackageReference Include="Microsoft.NET.Test.Sdk" />
 		<PackageReference Include="NUnit" />
 		<PackageReference Include="NUnit3TestAdapter" />
 	</ItemGroup>
 
 	<ItemGroup>
-		<Using Include="NUnit.Framework" />
+		<Reference Include="ProcessGroup" />
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\..\src\ProcessGroup\ProcessGroup.csproj" />
+		<Using Include="NUnit.Framework" />
 	</ItemGroup>
 
 </Project>

@@ -1,4 +1,6 @@
 <Solution>
 	<Project Path="src/ProcessGroup/ProcessGroup.csproj" />
-	<Project Path="tests/ProcessGroup.Tests/ProcessGroup.Tests.csproj" />
+	<Project Path="tests/ProcessGroup.Tests/ProcessGroup.Tests.csproj">
+		<BuildDependency Project="src/ProcessGroup/ProcessGroup.csproj" />
+	</Project>
 </Solution>
