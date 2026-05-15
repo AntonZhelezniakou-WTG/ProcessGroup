@@ -59,7 +59,17 @@ sealed class UnixProcessGroup : IProcessGroupImpl
 	public void TerminateAll()
 	{
 		if (_pgid != 0)
-			_ = kill(-_pgid, SIGTERM);
+			kill(-_pgid, SIGTERM);
+
+		foreach (var process in _processes)
+		{
+			try
+			{
+				if (!process.HasExited)
+					kill(process.Id, SIGTERM);
+			}
+			catch (InvalidOperationException) { }
+		}
 	}
 
 	public ProcessGroupStats GetStats()
