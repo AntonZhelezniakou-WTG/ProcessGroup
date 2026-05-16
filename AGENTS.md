@@ -80,6 +80,7 @@
 - Use `Directory.Packages.props` for centralized package versions.
 - Keep source code under `src/`.
 - Keep tests under `tests/`.
+- Keep helper scripts under `scripts/`.
 
 ## Build And Test
 
@@ -90,6 +91,15 @@
 	- `Test summary: total: ..., failed: 0, succeeded: ...`
 - A successful test run must execute the discovered tests, not only complete MSBuild targets.
 - Because project-to-project references use `Reference` instead of `ProjectReference`, build ordering must come from `ProcessGroup.slnx`.
+
+## Linux Testing (local, from Windows)
+
+- `scripts/test-linux.ps1` runs the full test suite inside a Linux container using Rancher Desktop or Docker Desktop.
+- Requires PowerShell 7+ and a running Docker daemon (`docker` on PATH).
+- The script shadows `bin/` and `obj/` folders with anonymous Docker volumes so Windows IDE artifacts do not leak into the Linux build.
+- A named volume (`processgroup-nuget`) caches NuGet packages between runs.
+- Supports `-Filter`, `-Configuration`, and `-Rebuild` parameters.
+- Do not modify the anonymous-volume list in the script without also verifying that the Linux build still resolves `ProcessGroup.dll` correctly (the test project uses `AssemblySearchPaths` pointing to the standard `src/ProcessGroup/bin/` location).
 
 ## Formatting
 

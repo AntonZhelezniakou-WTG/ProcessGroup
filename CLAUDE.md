@@ -13,6 +13,10 @@ dotnet test tests/ProcessGroup.Tests/ProcessGroup.Tests.csproj
 
 # Run a single test
 dotnet test tests/ProcessGroup.Tests/ProcessGroup.Tests.csproj --filter "FullyQualifiedName~TestMethodName"
+
+# Run tests inside a Linux container (requires Rancher Desktop or Docker Desktop, PowerShell 7+)
+pwsh scripts/test-linux.ps1
+pwsh scripts/test-linux.ps1 -Filter "FullyQualifiedName~TestMethodName"
 ```
 
 ## Architecture
@@ -60,3 +64,7 @@ public readonly record struct ProcessGroupStats(
 ### Test project setup
 
 Tests reference the library via a direct `<Reference>` + `AssemblySearchPaths` (not `<ProjectReference>`). Run tests after a `dotnet build` or let the test runner build implicitly.
+
+### Linux testing from Windows
+
+`scripts/test-linux.ps1` mounts the repo into `mcr.microsoft.com/dotnet/sdk:10.0` and runs `dotnet build` + `dotnet test`. Anonymous Docker volumes shadow `src/ProcessGroup/bin`, `src/ProcessGroup/obj`, `tests/ProcessGroup.Tests/bin`, and `tests/ProcessGroup.Tests/obj` to keep the host working copy untouched. A named volume (`processgroup-nuget`) caches packages between runs. CI mirrors this with `.github/workflows/ci.yml` (ubuntu-latest, triggers on PR and push to main).
