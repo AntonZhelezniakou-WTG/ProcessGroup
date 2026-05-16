@@ -6,7 +6,7 @@
 		<AssemblyName>ProcessGroup</AssemblyName>
 
 		<PackageId>ProcessGroup</PackageId>
-		<Version>2.0.0</Version>
+		<Version>3.0.0</Version>
 		<Authors>Anton Zhelezniakou</Authors>
 		<Copyright>Copyright (c) 2026 Anton Zhelezniakou, WiseTech Global. All rights reserved.</Copyright>
 		<Description>Cross-platform child process lifetime management for .NET. Ensures child processes are terminated when the parent exits — gracefully or via crash. Backed by Job Objects on Windows and POSIX process groups on Linux/macOS/FreeBSD. AOT-compatible.</Description>
