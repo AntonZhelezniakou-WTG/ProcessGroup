@@ -1,4 +1,4 @@
-namespace ProcessGroup;
+namespace ProcessGroups;
 
 public readonly record struct ProcessGroupStats(
 	int ActiveProcessCount,

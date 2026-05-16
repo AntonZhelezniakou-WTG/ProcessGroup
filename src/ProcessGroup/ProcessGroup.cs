@@ -1,12 +1,12 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
-namespace ProcessGroup;
+namespace ProcessGroups;
 
 public sealed class ProcessGroup : IDisposable, IAsyncDisposable
 {
 	readonly IProcessGroupImpl _impl;
-	bool _disposed;
+	int _disposed;
 
 	public ProcessGroup()
 	{
@@ -21,7 +21,7 @@ public sealed class ProcessGroup : IDisposable, IAsyncDisposable
 
 	public Process Start(ProcessStartInfo startInfo, CancellationToken cancellationToken = default)
 	{
-		ObjectDisposedException.ThrowIf(_disposed, this);
+		ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
 		ArgumentNullException.ThrowIfNull(startInfo);
 		cancellationToken.ThrowIfCancellationRequested();
 
@@ -35,36 +35,34 @@ public sealed class ProcessGroup : IDisposable, IAsyncDisposable
 
 	public void Add(Process process)
 	{
-		ObjectDisposedException.ThrowIf(_disposed, this);
+		ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
 		ArgumentNullException.ThrowIfNull(process);
 		_impl.Add(process);
 	}
 
 	public void TerminateAll()
 	{
-		ObjectDisposedException.ThrowIf(_disposed, this);
+		ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
 		_impl.TerminateAll();
 	}
 
 	public ProcessGroupStats GetStats()
 	{
-		ObjectDisposedException.ThrowIf(_disposed, this);
+		ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
 		return _impl.GetStats();
 	}
 
 	public void Dispose()
 	{
-		if (_disposed)
+		if (Interlocked.Exchange(ref _disposed, 1) != 0)
 			return;
-		_disposed = true;
 		_impl.Dispose();
 	}
 
 	public async ValueTask DisposeAsync()
 	{
-		if (_disposed)
+		if (Interlocked.Exchange(ref _disposed, 1) != 0)
 			return;
-		_disposed = true;
 		await _impl.DisposeAsync().ConfigureAwait(false);
 	}
 

@@ -7,7 +7,7 @@
 		<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 		<EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
 		<ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
-		<RootNamespace>ProcessGroup</RootNamespace>
+		<RootNamespace>ProcessGroups</RootNamespace>
 		<RepositoryType>git</RepositoryType>
 		<SatelliteResourceLanguages>en</SatelliteResourceLanguages>
 	</PropertyGroup>

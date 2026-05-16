@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-namespace ProcessGroup;
+namespace ProcessGroups;
 
 interface IProcessGroupImpl : IDisposable, IAsyncDisposable
 {

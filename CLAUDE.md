@@ -21,6 +21,8 @@ pwsh scripts/test-linux.ps1 -Filter "FullyQualifiedName~TestMethodName"
 
 ## Architecture
 
+The library namespace is `ProcessGroups` (plural); the public type is `ProcessGroup` (singular). The plural namespace exists deliberately so `using ProcessGroups; new ProcessGroup()` resolves without name/type ambiguity. Project name, `AssemblyName`, and `PackageId` remain `ProcessGroup` — those are the package identity, the namespace is the API surface.
+
 `ProcessGroup` is a thin cross-platform façade over two platform-specific implementations behind `IProcessGroupImpl`:
 
 - **`WindowsJobObject`** — wraps a Windows [Job Object](https://learn.microsoft.com/en-us/windows/win32/procthread/job-objects) with `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`. All assigned processes are killed atomically when the job handle is closed (on `Dispose`). Native interop lives in `Kernel32.cs` (`[LibraryImport]`, `SafeFileHandle` for the job handle).
@@ -55,9 +57,10 @@ public readonly record struct ProcessGroupStats(
 ### Key design constraints
 
 - `setpgid` errors `ESRCH`, `EPERM`, `EACCES` are silently ignored — all three are race conditions with the child's `exec()` or natural exit, not real failures.
-- On Unix, processes are added to `_processes` **before** calling `setpgid`, so a setpgid failure never leaks a started process.
+- On Unix, processes started by `StartAndAdd` are added to `_processes` **before** calling `setpgid`, so a setpgid failure never leaks a process we created. `Add` (for externally-started processes) intentionally appends only after `setpgid` succeeds — the contract is "if Add throws, we did not take ownership."
 - On Windows, if `AssignProcessToJobObject` fails after `Process.Start`, the process is killed and disposed before re-throwing — same guarantee.
 - The 2-second Unix shutdown timeout is a **shared deadline** across all processes, not per-process.
+- `ProcessGroup` is thread-safe: `_disposed` uses `Interlocked.Exchange`/`Volatile.Read`; `UnixProcessGroup` guards `_processes`/`_pgid` with `System.Threading.Lock` and takes a snapshot before any blocking wait or `await` so I/O runs outside the lock. `WindowsJobObject` relies on the kernel's own synchronisation.
 - `IsAotCompatible = true` — keep all P/Invoke via `[LibraryImport]`; no reflection-based interop.
 - `TreatWarningsAsErrors = true` — the build is warning-clean; keep it that way.
 

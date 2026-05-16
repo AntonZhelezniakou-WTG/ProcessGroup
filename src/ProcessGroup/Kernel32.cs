@@ -2,7 +2,7 @@ using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using Microsoft.Win32.SafeHandles;
 
-namespace ProcessGroup;
+namespace ProcessGroups;
 
 [SupportedOSPlatform("windows")]
 static partial class Kernel32

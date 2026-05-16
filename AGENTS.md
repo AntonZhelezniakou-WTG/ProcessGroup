@@ -39,6 +39,7 @@
 
 - Keep all functionality available as reusable library APIs.
 - Keep platform-specific implementations internal to the library.
+- The library namespace is `ProcessGroups` (plural); the public class is `ProcessGroup` (singular). Do not collapse them — the plural namespace exists to avoid a name/type collision and keep `using ProcessGroups; new ProcessGroup()` unambiguous.
 - Preserve the split between:
 	- `ProcessGroup` public API
 	- `IProcessGroupImpl` internal abstraction
@@ -46,6 +47,14 @@
 	- `UnixProcessGroup` Unix-like implementation
 - Do not expose platform-specific implementation types publicly unless explicitly requested.
 - Do not add dependency injection for this small library unless there is a concrete need.
+
+## Thread Safety
+
+- `ProcessGroup` public methods (`Start`, `Add`, `TerminateAll`, `GetStats`, `Dispose`, `DisposeAsync`) are safe to call concurrently from multiple threads.
+- `_disposed` is coordinated with `Interlocked.Exchange` / `Volatile.Read`; `Dispose` and `DisposeAsync` run their underlying teardown exactly once.
+- `UnixProcessGroup` guards `_processes` and `_pgid` with a `System.Threading.Lock` and uses a snapshot pattern in `TerminateAll`, `GetStats`, `Dispose`, and `DisposeAsync` so blocking work (waiting for child exit) happens outside the lock.
+- `WindowsJobObject` relies on the kernel's own synchronisation (`SafeFileHandle` + Win32 Job Object APIs) and holds no managed list.
+- Do not remove this protection without a replacement; concurrent `Start` followed by `Dispose` from another thread must not corrupt state or leak a child process.
 
 ## Process Execution
 

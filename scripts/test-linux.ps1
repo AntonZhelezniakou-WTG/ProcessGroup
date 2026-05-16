@@ -44,7 +44,10 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-$RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+# Normalise to forward slashes so docker on Windows handles paths with mixed
+# separators uniformly. The bind-mount source still needs to be quoted in case
+# the user clones the repo into a path containing spaces.
+$RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path -replace '\\', '/'
 $NugetVolume = 'processgroup-nuget'
 
 if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
@@ -99,6 +102,11 @@ $dockerArgs += @(
     'bash', '-c', $bashScript
 )
 
-Write-Host "==> docker $($dockerArgs -join ' ')" -ForegroundColor DarkGray
+Write-Host "==> Running tests in $Image" -ForegroundColor DarkGray
+Write-Host "    Repo:          $RepoRoot -> /src" -ForegroundColor DarkGray
+Write-Host "    Configuration: $Configuration" -ForegroundColor DarkGray
+if ($Filter)  { Write-Host "    Filter:        $Filter" -ForegroundColor DarkGray }
+if ($Rebuild) { Write-Host "    Rebuild:       yes" -ForegroundColor DarkGray }
+
 & docker @dockerArgs
 exit $LASTEXITCODE

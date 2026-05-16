@@ -1,15 +1,16 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
-using static ProcessGroup.Libc;
+using static ProcessGroups.Libc;
 
-namespace ProcessGroup;
+namespace ProcessGroups;
 
 [SupportedOSPlatform("linux")]
 [SupportedOSPlatform("macos")]
 [SupportedOSPlatform("freebsd")]
 sealed class UnixProcessGroup : IProcessGroupImpl
 {
+	readonly Lock _lock = new();
 	readonly List<Process> _processes = [];
 	int _pgid;
 
@@ -19,19 +20,22 @@ sealed class UnixProcessGroup : IProcessGroupImpl
 			?? throw new InvalidOperationException("Failed to start process.");
 
 		var pid = process.Id;
+		int pgid;
+		lock (_lock)
+		{
+			if (_pgid == 0)
+				_pgid = pid;
+			pgid = _pgid;
+			_processes.Add(process);
+		}
 
-		if (_pgid == 0)
-			_pgid = pid;
-
-		_processes.Add(process);
-
-		var result = setpgid(pid, _pgid);
+		var result = setpgid(pid, pgid);
 		if (result != 0)
 		{
 			var err = Marshal.GetLastPInvokeError();
 			if (err is not (ESRCH or EPERM or EACCES))
 				throw new InvalidOperationException(
-					$"setpgid({pid}, {_pgid}) failed with errno {err}.");
+					$"setpgid({pid}, {pgid}) failed with errno {err}.");
 		}
 
 		return process;
@@ -40,45 +44,55 @@ sealed class UnixProcessGroup : IProcessGroupImpl
 	public void Add(Process process)
 	{
 		var pid = process.Id;
+		int pgid;
+		lock (_lock)
+		{
+			if (_pgid == 0)
+				_pgid = pid;
+			pgid = _pgid;
+		}
 
-		if (_pgid == 0)
-			_pgid = pid;
-
-		var result = setpgid(pid, _pgid);
+		var result = setpgid(pid, pgid);
 		if (result != 0)
 		{
 			var err = Marshal.GetLastPInvokeError();
 			if (err is not (ESRCH or EPERM or EACCES))
 				throw new InvalidOperationException(
-					$"setpgid({pid}, {_pgid}) failed with errno {err}.");
+					$"setpgid({pid}, {pgid}) failed with errno {err}.");
 		}
 
-		_processes.Add(process);
+		lock (_lock)
+		{
+			_processes.Add(process);
+		}
 	}
 
 	public void TerminateAll()
 	{
-		if (_pgid != 0)
-			kill(-_pgid, SIGTERM);
-
-		foreach (var process in _processes)
+		Process[] snapshot;
+		int pgid;
+		lock (_lock)
 		{
-			try
-			{
-				if (!process.HasExited)
-					kill(process.Id, SIGTERM);
-			}
-			catch (InvalidOperationException) { }
+			pgid = _pgid;
+			snapshot = [.. _processes];
 		}
+
+		SignalAll(pgid, snapshot);
 	}
 
 	public ProcessGroupStats GetStats()
 	{
+		Process[] snapshot;
+		lock (_lock)
+		{
+			snapshot = [.. _processes];
+		}
+
 		var active = 0;
 		var cpu = TimeSpan.Zero;
 		long peakMem = 0;
 
-		foreach (var process in _processes)
+		foreach (var process in snapshot)
 		{
 			try
 			{
@@ -90,7 +104,7 @@ sealed class UnixProcessGroup : IProcessGroupImpl
 				cpu += process.TotalProcessorTime;
 				peakMem = Math.Max(peakMem, process.PeakWorkingSet64);
 			}
-			catch (InvalidOperationException)
+			catch (Exception ex) when (ex is InvalidOperationException or ObjectDisposedException)
 			{
 			}
 		}
@@ -100,11 +114,19 @@ sealed class UnixProcessGroup : IProcessGroupImpl
 
 	public void Dispose()
 	{
-		TerminateAll();
+		Process[] snapshot;
+		int pgid;
+		lock (_lock)
+		{
+			pgid = _pgid;
+			snapshot = [.. _processes];
+		}
+
+		SignalAll(pgid, snapshot);
 
 		var start = Stopwatch.GetTimestamp();
 		var timeout = TimeSpan.FromSeconds(2);
-		foreach (var process in _processes)
+		foreach (var process in snapshot)
 		{
 			try
 			{
@@ -113,7 +135,7 @@ sealed class UnixProcessGroup : IProcessGroupImpl
 				if (!process.HasExited && !process.WaitForExit(remainingMs))
 					process.Kill(entireProcessTree: true);
 			}
-			catch (InvalidOperationException)
+			catch (Exception ex) when (ex is InvalidOperationException or ObjectDisposedException)
 			{
 			}
 		}
@@ -121,11 +143,19 @@ sealed class UnixProcessGroup : IProcessGroupImpl
 
 	public async ValueTask DisposeAsync()
 	{
-		TerminateAll();
+		Process[] snapshot;
+		int pgid;
+		lock (_lock)
+		{
+			pgid = _pgid;
+			snapshot = [.. _processes];
+		}
+
+		SignalAll(pgid, snapshot);
 
 		var start = Stopwatch.GetTimestamp();
 		var timeout = TimeSpan.FromSeconds(2);
-		foreach (var process in _processes)
+		foreach (var process in snapshot)
 		{
 			try
 			{
@@ -148,9 +178,25 @@ sealed class UnixProcessGroup : IProcessGroupImpl
 				if (!process.HasExited)
 					process.Kill(entireProcessTree: true);
 			}
-			catch (InvalidOperationException)
+			catch (Exception ex) when (ex is InvalidOperationException or ObjectDisposedException)
 			{
 			}
+		}
+	}
+
+	static void SignalAll(int pgid, Process[] processes)
+	{
+		if (pgid != 0)
+			kill(-pgid, SIGTERM);
+
+		foreach (var process in processes)
+		{
+			try
+			{
+				if (!process.HasExited)
+					kill(process.Id, SIGTERM);
+			}
+			catch (Exception ex) when (ex is InvalidOperationException or ObjectDisposedException) { }
 		}
 	}
 }

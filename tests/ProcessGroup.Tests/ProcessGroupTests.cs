@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-namespace ProcessGroup.Tests;
+namespace ProcessGroups.Tests;
 
 public class ProcessGroupTests
 {

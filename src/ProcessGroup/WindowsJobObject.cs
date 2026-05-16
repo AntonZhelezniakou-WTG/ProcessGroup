@@ -3,9 +3,9 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using Microsoft.Win32.SafeHandles;
-using static ProcessGroup.Kernel32;
+using static ProcessGroups.Kernel32;
 
-namespace ProcessGroup;
+namespace ProcessGroups;
 
 [SupportedOSPlatform("windows")]
 sealed class WindowsJobObject : IProcessGroupImpl

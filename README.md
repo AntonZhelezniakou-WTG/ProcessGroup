@@ -47,7 +47,7 @@ dotnet add package ProcessGroup
 
 ```csharp
 using System.Diagnostics;
-using ProcessGroup;
+using ProcessGroups;
 
 // Children are terminated when the group is disposed —
 // even if the parent process crashes.
