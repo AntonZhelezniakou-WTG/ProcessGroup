@@ -4,7 +4,7 @@
 		<TargetFramework>net10.0</TargetFramework>
 		<IsPackable>false</IsPackable>
 		<NoWarn>$(NoWarn);CA1707</NoWarn>
-		<AssemblySearchPaths>$(AssemblySearchPaths);..\..\src\ProcessGroup\bin\$(Configuration)\$(TargetFramework)</AssemblySearchPaths>
+		<AssemblySearchPaths>$(AssemblySearchPaths);$(ProcessGroupProjectDir)bin\$(Configuration)\$(TargetFramework)</AssemblySearchPaths>
 	</PropertyGroup>
 
 	<ItemGroup>

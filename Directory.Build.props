@@ -1,5 +1,11 @@
 <Project>
 	<PropertyGroup>
+		<!-- Repository root — MSBuildThisFileDirectory is the directory containing this file (with trailing separator). -->
+		<RepoRoot>$(MSBuildThisFileDirectory)</RepoRoot>
+		<ProcessGroupProjectDir>$(RepoRoot)src\ProcessGroup\</ProcessGroupProjectDir>
+	</PropertyGroup>
+
+	<PropertyGroup>
 		<AnalysisLevel>latest-recommended</AnalysisLevel>
 		<LangVersion>latest</LangVersion>
 		<Nullable>enable</Nullable>

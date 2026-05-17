@@ -91,6 +91,15 @@
 - Keep tests under `tests/`.
 - Keep helper scripts under `scripts/`.
 
+## MSBuild Path Properties
+
+- `Directory.Build.props` defines two canonical path properties available to every project in the repository:
+	- `$(RepoRoot)` — absolute path to the repository root, with a trailing directory separator. Resolved from `$(MSBuildThisFileDirectory)` inside `Directory.Build.props`, which always equals the directory containing that file.
+	- `$(ProcessGroupProjectDir)` — absolute path to `src/ProcessGroup/` (the library project directory).
+- Use these properties instead of relative constructs (`..\..\`, `$(MSBuildThisFileDirectory)..\`, etc.) whenever a project file needs to reference a file or directory outside its own directory.
+- Do not hardcode cross-project or cross-directory relative paths in `.csproj`, `.props`, or `.targets` files.
+- If a new project is added that other projects must reference by path, add a corresponding `$(XxxProjectDir)` property to `Directory.Build.props`.
+
 ## Build And Test
 
 - Use `dotnet build ProcessGroup.slnx` to validate compilation.
