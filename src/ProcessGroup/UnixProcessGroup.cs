@@ -102,7 +102,7 @@ sealed class UnixProcessGroup : IProcessGroupImpl
 				process.Refresh();
 				active++;
 				cpu += process.TotalProcessorTime;
-				peakMem = Math.Max(peakMem, process.PeakWorkingSet64);
+				peakMem += process.PeakWorkingSet64;
 			}
 			catch (Exception ex) when (ex is InvalidOperationException or ObjectDisposedException)
 			{

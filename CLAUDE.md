@@ -50,7 +50,7 @@ public readonly record struct ProcessGroupStats(
     long PeakMemoryBytes);
 ```
 
-`GetStats()` is backed by `QueryInformationJobObject` on Windows (accounting + extended limit info) and by iterating `_processes` on Unix (active count only; CPU and memory are zero).
+`GetStats()` is backed by `QueryInformationJobObject` on Windows (accounting + extended limit info). On Unix it iterates `_processes`, summing `TotalProcessorTime` and `PeakWorkingSet64` from live processes (exited and disposed are skipped). Semantics differ slightly: Windows reports the kernel-tracked peak of *total* job memory over time; Unix reports the sum of per-process peaks, which is an upper bound — actual concurrent peak may be lower if processes peaked at different times.
 
 `CancellationToken` in `Start` kills the process on cancellation via `Process.Exited` cleanup — it does not prevent the process from starting.
 
@@ -70,4 +70,4 @@ Tests reference the library via a direct `<Reference>` + `AssemblySearchPaths` (
 
 ### Linux testing from Windows
 
-`scripts/test-linux.ps1` mounts the repo into `mcr.microsoft.com/dotnet/sdk:10.0` and runs `dotnet build` + `dotnet test`. Anonymous Docker volumes shadow `src/ProcessGroup/bin`, `src/ProcessGroup/obj`, `tests/ProcessGroup.Tests/bin`, and `tests/ProcessGroup.Tests/obj` to keep the host working copy untouched. A named volume (`processgroup-nuget`) caches packages between runs. CI mirrors this with `.github/workflows/ci.yml` (ubuntu-latest, triggers on PR and push to main).
+`scripts/test-linux.ps1` mounts the repo into `mcr.microsoft.com/dotnet/sdk:10.0` and runs `dotnet build` + `dotnet test`. Anonymous Docker volumes shadow `src/ProcessGroup/bin`, `src/ProcessGroup/obj`, `tests/ProcessGroup.Tests/bin`, and `tests/ProcessGroup.Tests/obj` to keep the host working copy untouched. A named volume (`processgroup-nuget`) caches packages between runs. CI mirrors this with `.github/workflows/ci.yml`, which runs the same build/test across `ubuntu-latest`, `windows-latest`, and `macos-latest` on PR and push to main.
