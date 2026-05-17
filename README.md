@@ -31,7 +31,9 @@ Alternatively, use a fine-grained token (**Tokens (beta)**): set Repository acce
 
 ### 2. Register the package source
 
-**Option A — `nuget.config` in the project root** (checked into the repo; keep the token out of it):
+**Option A — `nuget.config` with an environment variable** (safe to commit):
+
+NuGet expands `%VARIABLE%` from the environment, so the token never has to live in the file:
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -41,15 +43,15 @@ Alternatively, use a fine-grained token (**Tokens (beta)**): set Repository acce
   </packageSources>
   <packageSourceCredentials>
     <github-processgroup>
-      <add key="Username" value="YOUR_GITHUB_USERNAME" />
-      <add key="ClearTextPassword" value="YOUR_PAT" />
+      <add key="Username" value="%NUGET_USERNAME%" />
+      <add key="ClearTextPassword" value="%NUGET_READ_PAT%" />
     </github-processgroup>
   </packageSourceCredentials>
 </configuration>
 ```
 
-Do not commit the token. Use environment variable substitution or store credentials
-separately (see Option B).
+Set both `NUGET_USERNAME` and `NUGET_READ_PAT` in the environment before running
+`dotnet restore` or `dotnet add package` (see the local and CI sections below).
 
 **Option B — global credentials via CLI** (stored in your user-level `NuGet.Config`):
 
@@ -70,24 +72,55 @@ on the machine without touching any project file.
 dotnet add package ProcessGroup
 ```
 
-### CI / CD
+### Local development with a `.env` file
 
-GitHub Packages does not support truly anonymous access, so pipelines also need a token.
-The standard approach is to create a dedicated **machine GitHub account**, generate a
-classic PAT for it with only the `read:packages` scope, and store it as a repository
-secret (e.g. `NUGET_READ_PAT`). Then in your workflow:
+Create a `.env` file at the project root (add it to `.gitignore` — it must not be committed):
 
-```yaml
-- name: Add GitHub Packages source
-  run: |
-    dotnet nuget add source https://nuget.pkg.github.com/AntonZhelezniakou-WTG/index.json \
-      --name github-processgroup \
-      --username machine-account \
-      --password ${{ secrets.NUGET_READ_PAT }} \
-      --store-password-in-clear-text
+```
+NUGET_USERNAME=your_github_username
+NUGET_READ_PAT=ghp_your_token_here
 ```
 
-The machine account needs no repository access — the `read:packages` scope alone is
+Load it into the current shell before running dotnet commands:
+
+```powershell
+# PowerShell
+Get-Content .env | Where-Object { $_ -match '^[^#]\S*=' } | ForEach-Object {
+    $name, $value = $_ -split '=', 2
+    [System.Environment]::SetEnvironmentVariable($name.Trim(), $value.Trim())
+}
+```
+
+```bash
+# bash / zsh
+set -a; source .env; set +a
+```
+
+### CI / CD
+
+GitHub Packages does not support anonymous access, so pipelines also need a token.
+The standard approach is to create a dedicated **machine GitHub account**, generate a
+classic PAT with only the `read:packages` scope, then store it as a secret in your repo.
+
+**Add the secrets:**
+
+1. GitHub → your repo → **Settings → Secrets and variables → Actions → New repository secret**
+2. Add two secrets:
+   - `NUGET_USERNAME` — the machine account's GitHub username
+   - `NUGET_READ_PAT` — the classic PAT with `read:packages`
+
+**Use the secrets in your workflow:**
+
+```yaml
+- name: Restore
+  env:
+    NUGET_USERNAME: ${{ secrets.NUGET_USERNAME }}
+    NUGET_READ_PAT: ${{ secrets.NUGET_READ_PAT }}
+  run: dotnet restore
+```
+
+NuGet picks up both variables from the environment and substitutes them into `nuget.config`
+automatically. The machine account needs no repository access — `read:packages` alone is
 sufficient for public packages.
 
 ## Usage
