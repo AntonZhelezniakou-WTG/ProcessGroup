@@ -18,30 +18,77 @@ on Unix systems (Linux, macOS, FreeBSD) it uses POSIX process groups.
 
 The package is hosted on [GitHub Packages](https://github.com/AntonZhelezniakou-WTG/ProcessGroup/pkgs/nuget/ProcessGroup).
 
-1. Add the GitHub Packages source to your `nuget.config` (create one in the project root if it doesn't exist):
+GitHub Packages always requires authentication, even for public packages.
+You will need a GitHub Personal Access Token (PAT) with the `read:packages` scope.
+
+### 1. Create a PAT
+
+Go to **GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic)**
+and create a token with only the **`read:packages`** scope checked — nothing else is needed.
+
+Alternatively, use a fine-grained token (**Tokens (beta)**): set Repository access to
+*Public repositories (read-only)* and enable **Packages: Read** under Permissions.
+
+### 2. Register the package source
+
+**Option A — `nuget.config` in the project root** (checked into the repo; keep the token out of it):
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
 <configuration>
   <packageSources>
-    <add key="github" value="https://nuget.pkg.github.com/AntonZhelezniakou-WTG/index.json" />
+    <add key="github-processgroup" value="https://nuget.pkg.github.com/AntonZhelezniakou-WTG/index.json" />
   </packageSources>
   <packageSourceCredentials>
-    <github>
+    <github-processgroup>
       <add key="Username" value="YOUR_GITHUB_USERNAME" />
-      <add key="ClearTextPassword" value="YOUR_GITHUB_PAT" />
-    </github>
+      <add key="ClearTextPassword" value="YOUR_PAT" />
+    </github-processgroup>
   </packageSourceCredentials>
 </configuration>
 ```
 
-The PAT must have at least the `read:packages` scope.
+Do not commit the token. Use environment variable substitution or store credentials
+separately (see Option B).
 
-2. Add the package:
+**Option B — global credentials via CLI** (stored in your user-level `NuGet.Config`):
+
+```sh
+dotnet nuget add source https://nuget.pkg.github.com/AntonZhelezniakou-WTG/index.json \
+  --name github-processgroup \
+  --username YOUR_GITHUB_USERNAME \
+  --password YOUR_PAT \
+  --store-password-in-clear-text
+```
+
+This writes credentials once to `~/.nuget/NuGet/NuGet.Config` and works for all projects
+on the machine without touching any project file.
+
+### 3. Add the package
 
 ```sh
 dotnet add package ProcessGroup
 ```
+
+### CI / CD
+
+GitHub Packages does not support truly anonymous access, so pipelines also need a token.
+The standard approach is to create a dedicated **machine GitHub account**, generate a
+classic PAT for it with only the `read:packages` scope, and store it as a repository
+secret (e.g. `NUGET_READ_PAT`). Then in your workflow:
+
+```yaml
+- name: Add GitHub Packages source
+  run: |
+    dotnet nuget add source https://nuget.pkg.github.com/AntonZhelezniakou-WTG/index.json \
+      --name github-processgroup \
+      --username machine-account \
+      --password ${{ secrets.NUGET_READ_PAT }} \
+      --store-password-in-clear-text
+```
+
+The machine account needs no repository access — the `read:packages` scope alone is
+sufficient for public packages.
 
 ## Usage
 
