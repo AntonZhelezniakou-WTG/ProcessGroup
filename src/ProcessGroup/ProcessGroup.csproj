@@ -13,6 +13,7 @@
 		<PackageTags>process;job-object;process-group;cross-platform;lifetime;child-process</PackageTags>
 		<PackageLicenseFile>LICENSE</PackageLicenseFile>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<PackageReleaseNotes Condition="Exists('$(MSBuildThisFileDirectory)..\..\release-notes.md')">$([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)..\..\release-notes.md'))</PackageReleaseNotes>
 
 		<PackageProjectUrl>https://github.com/AntonZhelezniakou-WTG/ProcessGroup</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/AntonZhelezniakou-WTG/ProcessGroup</RepositoryUrl>
@@ -31,6 +32,7 @@
 	<ItemGroup>
 		<None Include="..\..\README.md" Pack="true" PackagePath="\" />
 		<None Include="..\..\LICENSE" Pack="true" PackagePath="\" />
+		<None Include="..\..\CHANGELOG.md" Pack="true" PackagePath="\" />
 	</ItemGroup>
 
 	<ItemGroup>

@@ -145,6 +145,19 @@
 - Documentation changes must be completed after implementation and successful validation.
 - Do not leave changed behavior undocumented.
 
+## Changelog
+
+- `CHANGELOG.md` is the single source of truth for release notes.
+- The release workflow reads `## [Unreleased]` automatically to populate the GitHub Release body and the NuGet `<PackageReleaseNotes>` field.
+- After any notable change, add a bullet under `## [Unreleased]` in `CHANGELOG.md` using the appropriate subsection:
+	- `### Added` — new features or API members
+	- `### Changed` — modified behaviour or API
+	- `### Fixed` — bug fixes
+- Write the entry for a consumer of the library, not the implementer. Keep it to one line.
+- Replace the placeholder `-` with a real bullet; do not leave placeholder lines alongside real entries.
+- Do not modify versioned sections (`## [3.1.0]`, etc.) — those are managed by the release workflow.
+- Omit entries for pure refactors, test-only changes, CI tweaks, and documentation fixes that do not affect public behaviour.
+
 ## Comments
 
 - Minimize comments.

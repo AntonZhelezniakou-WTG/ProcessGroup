@@ -102,6 +102,10 @@ pwsh ./scripts/test-linux.ps1 -Filter "FullyQualifiedName~TerminateAll"
 pwsh ./scripts/test-linux.ps1 -Configuration Debug -Rebuild
 ```
 
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for the version history.
+
 ## License
 
 Proprietary and Confidential — Copyright (c) 2026 Anton Zhelezniakou, WiseTech Global. All rights reserved.

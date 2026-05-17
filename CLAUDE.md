@@ -71,3 +71,27 @@ Tests reference the library via a direct `<Reference>` + `AssemblySearchPaths` (
 ### Linux testing from Windows
 
 `scripts/test-linux.ps1` mounts the repo into `mcr.microsoft.com/dotnet/sdk:10.0` and runs `dotnet build` + `dotnet test`. Anonymous Docker volumes shadow `src/ProcessGroup/bin`, `src/ProcessGroup/obj`, `tests/ProcessGroup.Tests/bin`, and `tests/ProcessGroup.Tests/obj` to keep the host working copy untouched. A named volume (`processgroup-nuget`) caches packages between runs. CI mirrors this with `.github/workflows/ci.yml`, which runs the same build/test across `ubuntu-latest`, `windows-latest`, and `macos-latest` on PR and push to main.
+
+## Changelog
+
+`CHANGELOG.md` is the single source of truth for release notes. The release workflow reads the `## [Unreleased]` section automatically — it populates the GitHub Release body and the NuGet `<PackageReleaseNotes>` field.
+
+**When to add an entry:** any user-visible change — new API, changed behaviour, bug fix, deprecation, removal. Skip pure refactors, test-only changes, and CI tweaks unless they affect behaviour.
+
+**How to add an entry:**
+
+1. Open `CHANGELOG.md`.
+2. Under `## [Unreleased]`, find the appropriate subsection:
+   - `### Added` — new features or API members
+   - `### Changed` — modified behaviour or API
+   - `### Fixed` — bug fixes
+3. Replace the placeholder `-` with a real bullet (or append after existing bullets). Keep it one line, written for a consumer of the library — not for the implementer.
+
+Example:
+
+```markdown
+### Fixed
+- `TerminateAll` no longer throws `ObjectDisposedException` when called concurrently with `Dispose`.
+```
+
+Do **not** touch the versioned sections (`## [3.1.0]`, etc.) — the release workflow manages those.
