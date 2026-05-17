@@ -158,14 +158,27 @@
 
 - `CHANGELOG.md` is the single source of truth for release notes.
 - The release workflow reads `## [Unreleased]` automatically to populate the GitHub Release body and the NuGet `<PackageReleaseNotes>` field.
-- After any notable change, add a bullet under `## [Unreleased]` in `CHANGELOG.md` using the appropriate subsection:
+- Add a manual bullet under `## [Unreleased]` in `CHANGELOG.md` whenever you want a curated, consumer-friendly wording. Use the appropriate subsection:
 	- `### Added` — new features or API members
 	- `### Changed` — modified behaviour or API
 	- `### Fixed` — bug fixes
 - Write the entry for a consumer of the library, not the implementer. Keep it to one line.
 - Replace the placeholder `-` with a real bullet; do not leave placeholder lines alongside real entries.
 - Do not modify versioned sections (`## [3.1.0]`, etc.) — those are managed by the release workflow.
-- Omit entries for pure refactors, test-only changes, CI tweaks, and documentation fixes that do not affect public behaviour.
+
+### Auto-fill fallback
+
+- If `## [Unreleased]` has no real bullets at release time, the workflow auto-generates entries from commits since the previous tag using `git-cliff` (config: `cliff.toml`). Manual entries always win over auto-fill.
+- The first word of the commit subject decides the bucket (case-insensitive):
+	- `Add`, `Feat` → `### Added`
+	- `Fix`, `Bug` → `### Fixed`
+	- `Remove`, `Delete`, `Drop` → `### Removed`
+	- `Refactor`, `Update`, `Change`, `Rename`, `Perf`, `CI`, `Cleanup`, etc. → `### Changed`
+	- `Doc`, `Chore`, `Test`, `Style` → skipped (excluded from notes)
+	- `Release v...` and merge commits → skipped
+	- anything unrecognised → `### Changed` (fallback)
+- Write commit subjects with these prefixes when you want them to land in the right bucket without editing `CHANGELOG.md`.
+- If the auto-fill produces no entries (e.g. only skipped commits since the previous tag), the release fails with a clear error — add a manual entry to unblock it.
 
 ## Comments
 

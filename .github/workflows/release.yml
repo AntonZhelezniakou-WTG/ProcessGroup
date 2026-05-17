@@ -61,6 +61,62 @@ jobs:
             exit 1
           fi
 
+      - name: Install git-cliff
+        uses: taiki-e/install-action@v2
+        with:
+          tool: git-cliff@2
+
+      - name: Auto-fill [Unreleased] from git log if empty
+        env:
+          PREV_TAG: v${{ steps.version.outputs.current }}
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          import os
+          import pathlib
+          import re
+          import subprocess
+          import sys
+
+          prev_tag = os.environ["PREV_TAG"]
+          path = pathlib.Path("CHANGELOG.md")
+          text = path.read_text()
+
+          m = re.search(r"^## \[Unreleased\]\s*\n(.*?)(?=^## \[|\Z)", text, re.M | re.S)
+          if not m:
+              print("::error::Could not find '## [Unreleased]' header in CHANGELOG.md", file=sys.stderr)
+              sys.exit(1)
+
+          body = m.group(1)
+          has_real_bullets = any(re.match(r"^-\s+\S", ln) for ln in body.splitlines())
+          if has_real_bullets:
+              print("[Unreleased] already has manual entries; skipping auto-fill.")
+              sys.exit(0)
+
+          print(f"[Unreleased] is empty; generating from git log since {prev_tag}...")
+          result = subprocess.run(
+              ["git-cliff", "--config", "cliff.toml", "--strip", "all", f"{prev_tag}..HEAD"],
+              check=True,
+              capture_output=True,
+              text=True,
+          )
+          generated = result.stdout.strip()
+          if not generated:
+              print(
+                  f"::error::No release-worthy commits found between {prev_tag} and HEAD. "
+                  "Either add a manual entry to [Unreleased] in CHANGELOG.md, or commit "
+                  "changes with a recognised prefix (Add/Fix/Refactor/Update/Remove/...).",
+                  file=sys.stderr,
+              )
+              sys.exit(1)
+
+          new_text = text[: m.start(1)] + generated + "\n\n" + text[m.end(1) :]
+          path.write_text(new_text)
+          print("----- auto-generated [Unreleased] body -----")
+          print(generated)
+          print("--------------------------------------------")
+          PY
+
       - name: Extract release notes from CHANGELOG.md
         run: |
           set -euo pipefail

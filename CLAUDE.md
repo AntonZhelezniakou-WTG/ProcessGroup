@@ -85,7 +85,7 @@ Use these properties wherever a `.csproj`, `.props`, or `.targets` file must ref
 
 `CHANGELOG.md` is the single source of truth for release notes. The release workflow reads the `## [Unreleased]` section automatically — it populates the GitHub Release body and the NuGet `<PackageReleaseNotes>` field.
 
-**When to add an entry:** any user-visible change — new API, changed behaviour, bug fix, deprecation, removal. Skip pure refactors, test-only changes, and CI tweaks unless they affect behaviour.
+**When to add an entry manually:** any user-visible change where you want a curated, consumer-friendly wording — new API, changed behaviour, bug fix, deprecation, removal.
 
 **How to add an entry:**
 
@@ -104,3 +104,21 @@ Example:
 ```
 
 Do **not** touch the versioned sections (`## [3.1.0]`, etc.) — the release workflow manages those.
+
+### Auto-fill from git log
+
+If `## [Unreleased]` has no real bullets when the release workflow runs, it auto-generates entries from commits since the previous tag via [git-cliff](https://git-cliff.org/) (config: `cliff.toml`). Manual entries always take priority — auto-fill is a fallback so a release never blocks on missing notes, not the default.
+
+The auto-fill bucket is decided by the first word of the commit subject:
+
+| Prefix (case-insensitive) | Bucket |
+|---|---|
+| `Add`, `Feat` | `### Added` |
+| `Fix`, `Bug` | `### Fixed` |
+| `Remove`, `Delete`, `Drop` | `### Removed` |
+| `Refactor`, `Update`, `Change`, `Rename`, `Perf`, `CI`, `Cleanup`, ... | `### Changed` |
+| `Doc`, `Chore`, `Test`, `Style` | skipped (not in notes) |
+| `Release v...`, `Merge ...` | skipped |
+| anything else | `### Changed` (fallback) |
+
+Write commit subjects accordingly when you want them to appear in the right bucket without touching `CHANGELOG.md`. If you want one wording for the commit and another for the changelog, write the manual entry — it wins.
