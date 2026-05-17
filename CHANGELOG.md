@@ -16,6 +16,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 -
 
+## [3.1.1] - 2026-05-17
+
+### Added
+
+- Add changelog auto-fill fallback for releases
+
+
+### Changed
+
+- Generate release notes from the changelog
+- Centralize MSBuild path handling for repo-wide references
+
 ## [3.1.0] - 2026-05-17
 
 ### Changed
@@ -46,7 +58,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Malformed package copyright metadata.
 
-[Unreleased]: https://github.com/AntonZhelezniakou-WTG/ProcessGroup/compare/v3.1.0...HEAD
+[Unreleased]: https://github.com/AntonZhelezniakou-WTG/ProcessGroup/compare/v3.1.1...HEAD
+[3.1.1]: https://github.com/AntonZhelezniakou-WTG/ProcessGroup/compare/v3.1.0...v3.1.1
 [3.1.0]: https://github.com/AntonZhelezniakou-WTG/ProcessGroup/compare/v3.0.0...v3.1.0
 [3.0.0]: https://github.com/AntonZhelezniakou-WTG/ProcessGroup/compare/v2.0.0...v3.0.0
 [2.0.0]: https://github.com/AntonZhelezniakou-WTG/ProcessGroup/releases/tag/v2.0.0
