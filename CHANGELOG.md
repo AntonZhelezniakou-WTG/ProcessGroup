@@ -16,6 +16,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 -
 
+## [3.2.0] - 2026-05-18
+
+### Added
+
+- Add AOT smoke test and CI validation; update docs
+- Add CodeQL workflow and docs for security scanning
+
+
+### Changed
+
+- Simplify GitHub Packages setup instructions
+- Sign release artifacts and publish checksums
+- Group test projects under 'Tests' folder in solution
+- Harden CI and release artifact handling
+
 ## [3.1.3] - 2026-05-17
 
 ### Changed
@@ -70,7 +85,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Malformed package copyright metadata.
 
-[Unreleased]: https://github.com/AntonZhelezniakou-WTG/ProcessGroup/compare/v3.1.3...HEAD
+[Unreleased]: https://github.com/AntonZhelezniakou-WTG/ProcessGroup/compare/v3.2.0...HEAD
+[3.2.0]: https://github.com/AntonZhelezniakou-WTG/ProcessGroup/compare/v3.1.3...v3.2.0
 [3.1.3]: https://github.com/AntonZhelezniakou-WTG/ProcessGroup/compare/v3.1.2...v3.1.3
 [3.1.2]: https://github.com/AntonZhelezniakou-WTG/ProcessGroup/compare/v3.1.1...v3.1.2
 [3.1.1]: https://github.com/AntonZhelezniakou-WTG/ProcessGroup/compare/v3.1.0...v3.1.1
