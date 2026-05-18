@@ -3,4 +3,7 @@
 	<Project Path="tests/ProcessGroup.Tests/ProcessGroup.Tests.csproj">
 		<BuildDependency Project="src/ProcessGroup/ProcessGroup.csproj" />
 	</Project>
+	<Project Path="tests/ProcessGroup.AotSmoke/ProcessGroup.AotSmoke.csproj">
+		<BuildDependency Project="src/ProcessGroup/ProcessGroup.csproj" />
+	</Project>
 </Solution>

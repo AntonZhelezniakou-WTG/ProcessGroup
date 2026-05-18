@@ -17,6 +17,9 @@ dotnet test tests/ProcessGroup.Tests/ProcessGroup.Tests.csproj --filter "FullyQu
 # Run tests inside a Linux container (requires Rancher Desktop or Docker Desktop, PowerShell 7+)
 pwsh scripts/test-linux.ps1
 pwsh scripts/test-linux.ps1 -Filter "FullyQualifiedName~TestMethodName"
+
+# AOT publish smoke test (Linux only — exercises Native AOT toolchain end-to-end)
+dotnet publish tests/ProcessGroup.AotSmoke/ProcessGroup.AotSmoke.csproj -c Release -r linux-x64 -p:PublishAot=true
 ```
 
 ## Architecture
@@ -61,12 +64,14 @@ public readonly record struct ProcessGroupStats(
 - On Windows, if `AssignProcessToJobObject` fails after `Process.Start`, the process is killed and disposed before re-throwing — same guarantee.
 - The 2-second Unix shutdown timeout is a **shared deadline** across all processes, not per-process.
 - `ProcessGroup` is thread-safe: `_disposed` uses `Interlocked.Exchange`/`Volatile.Read`; `UnixProcessGroup` guards `_processes`/`_pgid` with `System.Threading.Lock` and takes a snapshot before any blocking wait or `await` so I/O runs outside the lock. `WindowsJobObject` relies on the kernel's own synchronisation.
-- `IsAotCompatible = true` — keep all P/Invoke via `[LibraryImport]`; no reflection-based interop.
+- `IsAotCompatible = true` — keep all P/Invoke via `[LibraryImport]`; no reflection-based interop. The CI `aot-publish` job (see [.github/workflows/ci.yml](.github/workflows/ci.yml)) runs `dotnet publish -p:PublishAot=true` on `tests/ProcessGroup.AotSmoke` and executes the resulting native binary, so any IL2xxx/IL3xxx warning introduced by a code change fails CI.
 - `TreatWarningsAsErrors = true` — the build is warning-clean; keep it that way.
 
 ### Test project setup
 
-Tests reference the library via a direct `<Reference>` + `AssemblySearchPaths` (not `<ProjectReference>`). Run tests after a `dotnet build` or let the test runner build implicitly.
+Both `tests/ProcessGroup.Tests` and `tests/ProcessGroup.AotSmoke` reference the library via direct `<Reference Include="ProcessGroup" />` + `AssemblySearchPaths` (not `<ProjectReference>`). Build ordering comes from `BuildDependency` entries in `ProcessGroup.slnx`. Run tests after a `dotnet build` or let the test runner build implicitly.
+
+`tests/ProcessGroup.AotSmoke` sets `<PublishAot>true</PublishAot>` in the csproj, so AOT analyzers (`IL2xxx`/`IL3xxx`) run on every `dotnet build` of the solution — not only at `dotnet publish` time. Native AOT compilation itself still happens only at publish. The CI `aot-publish` job runs the published binary, so code that AOT-strips at runtime (e.g. unannotated reflection) breaks CI even if compilation succeeded.
 
 ### Linux testing from Windows
 
@@ -122,3 +127,16 @@ The auto-fill bucket is decided by the first word of the commit subject:
 | anything else | `### Changed` (fallback) |
 
 Write commit subjects accordingly when you want them to appear in the right bucket without touching `CHANGELOG.md`. If you want one wording for the commit and another for the changelog, write the manual entry — it wins.
+
+## Release packaging
+
+The release workflow ([.github/workflows/release.yml](.github/workflows/release.yml)) signs both `.nupkg` and `.snupkg` with the `AntonZhelezniakouWTG-CodeSigning` certificate **before** pushing to GitHub Packages, so the published artifact and the asset attached to the GitHub Release are byte-identical and both carry the signature. The public certificate is committed at [certificates/AntonZhelezniakouWTG-CodeSigning.cer](certificates/AntonZhelezniakouWTG-CodeSigning.cer) for consumer-side `dotnet nuget verify`.
+
+Signing requires two repo secrets:
+
+- `CODE_SIGNING_PFX_BASE64` — base64-encoded `.pfx` (private key + chain)
+- `CODE_SIGNING_PFX_PASSWORD` — password for the `.pfx`
+
+The PFX is decoded into `$RUNNER_TEMP`, used by `dotnet nuget sign --timestamper http://timestamp.digicert.com`, and shredded immediately after. If either secret is missing, the workflow fails at the sign step — the push to GitHub Packages and the GitHub Release creation never run, so an unsigned package cannot leak.
+
+The workflow then writes `SHA256SUMS` (one line per artifact, native `sha256sum -c` format) and attaches it to the GitHub Release alongside `.nupkg` / `.snupkg`. Verification flow for consumers is documented in [README.md](README.md).

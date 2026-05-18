@@ -87,6 +87,42 @@ classic PAT with only the `read:packages` scope, and store it as a secret in you
 The machine account needs no repository access — `read:packages` alone is
 sufficient for public packages.
 
+## Verifying the package
+
+Every release is signed with the `AntonZhelezniakouWTG-CodeSigning` certificate.
+The public certificate is committed at
+[certificates/AntonZhelezniakouWTG-CodeSigning.cer](certificates/AntonZhelezniakouWTG-CodeSigning.cer).
+
+### Verify the NuGet signature
+
+```pwsh
+# Compute the SHA-256 fingerprint of the public certificate
+$cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2 `
+    "certificates/AntonZhelezniakouWTG-CodeSigning.cer"
+$fp = $cert.GetCertHashString("SHA256")
+
+# Verify the package against that fingerprint
+dotnet nuget verify ProcessGroup.<version>.nupkg --certificate-fingerprint $fp
+```
+
+Expected: `Successfully verified package 'ProcessGroup.<version>'.`
+
+### Verify the SHA256 checksums
+
+Each GitHub Release ships a `SHA256SUMS` file alongside the `.nupkg` / `.snupkg`.
+Download all three into the same directory, then:
+
+```sh
+sha256sum -c SHA256SUMS
+```
+
+Expected:
+
+```
+ProcessGroup.<version>.nupkg: OK
+ProcessGroup.<version>.snupkg: OK
+```
+
 ## Usage
 
 ```csharp

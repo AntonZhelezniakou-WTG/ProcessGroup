@@ -32,3 +32,23 @@ jobs:
 
       - name: Test
         run: dotnet test --no-build --configuration Release
+
+  aot-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install Native AOT prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang zlib1g-dev
+
+      - name: AOT publish smoke test
+        run: dotnet publish tests/ProcessGroup.AotSmoke/ProcessGroup.AotSmoke.csproj -c Release -r linux-x64 -p:PublishAot=true
+
+      - name: Run AOT-compiled binary
+        run: ./tests/ProcessGroup.AotSmoke/bin/Release/net10.0/linux-x64/publish/ProcessGroup.AotSmoke

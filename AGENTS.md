@@ -5,6 +5,7 @@
 - This repository contains `ProcessGroup`, a reusable .NET library for cross-platform child process lifetime management.
 - The public API lives in `src/ProcessGroup`.
 - Tests live in `tests/ProcessGroup.Tests`.
+- The AOT validation smoke executable lives in `tests/ProcessGroup.AotSmoke` — a minimal console app that exercises the public API and is `dotnet publish -p:PublishAot=true`-ed in CI to catch AOT-incompatible changes (including transitive ones).
 - Keep the repository focused on the library; do not introduce CLI, UI, hosting, logging, or dependency injection infrastructure unless explicitly requested.
 
 ## Platform
@@ -73,6 +74,7 @@
 - Projects that reference outputs from other projects must define `AssemblySearchPaths`.
 - `AssemblySearchPaths` must contain the output directories of referenced projects.
 - Project references must resolve through assembly lookup paths only.
+- This rule applies to `tests/ProcessGroup.AotSmoke` as well: it consumes the library through `<Reference Include="ProcessGroup" />` + `AssemblySearchPaths`. AOT analyzers still operate because `src/ProcessGroup` builds with `IsAotCompatible=true`, which bakes the relevant attributes into the produced assembly metadata, and the smoke project sets `<PublishAot>true</PublishAot>`. Build ordering is enforced by `BuildDependency` in `ProcessGroup.slnx`.
 
 ## Build Ordering
 
@@ -109,6 +111,14 @@
 	- `Test summary: total: ..., failed: 0, succeeded: ...`
 - A successful test run must execute the discovered tests, not only complete MSBuild targets.
 - Because project-to-project references use `Reference` instead of `ProjectReference`, build ordering must come from `ProcessGroup.slnx`.
+
+## AOT Validation
+
+- `IsAotCompatible=true` on the library declares AOT-readiness; it must also be **proven** by the CI `aot-publish` job (`.github/workflows/ci.yml`), which runs on `ubuntu-latest`.
+- The smoke app at `tests/ProcessGroup.AotSmoke` sets `<PublishAot>true</PublishAot>` so AOT analyzers (IL2xxx / IL3xxx) run on every `dotnet build` of the solution, not only at publish time.
+- The CI job runs `dotnet publish tests/ProcessGroup.AotSmoke/ProcessGroup.AotSmoke.csproj -c Release -r linux-x64 -p:PublishAot=true` and **executes** the resulting native binary — a non-zero exit fails CI. This catches both compile-time AOT incompatibilities and runtime regressions (e.g. unannotated reflection that AOT strips silently).
+- Native AOT prerequisites on the runner (`clang`, `zlib1g-dev`) are installed by the job — do not remove them.
+- When introducing new code or new transitive dependencies, treat any AOT warning the same as a compile error: fix the root cause, do not suppress.
 
 ## Linux Testing (local, from Windows)
 
@@ -179,6 +189,18 @@
 	- anything unrecognised → `### Changed` (fallback)
 - Write commit subjects with these prefixes when you want them to land in the right bucket without editing `CHANGELOG.md`.
 - If the auto-fill produces no entries (e.g. only skipped commits since the previous tag), the release fails with a clear error — add a manual entry to unblock it.
+
+## Release Signing And Checksums
+
+- The release workflow (`.github/workflows/release.yml`) signs both `.nupkg` and `.snupkg` with the `AntonZhelezniakouWTG-CodeSigning` certificate before pushing to GitHub Packages. The artifact in GitHub Packages and the asset attached to the GitHub Release are byte-identical and both carry the signature.
+- The public certificate is committed at `certificates/AntonZhelezniakouWTG-CodeSigning.cer`. Do not move or delete it — consumers verify signatures against this file.
+- Signing requires two repository secrets:
+	- `CODE_SIGNING_PFX_BASE64` — base64-encoded `.pfx` (private key + chain)
+	- `CODE_SIGNING_PFX_PASSWORD` — password for the `.pfx`
+- Do not embed the `.pfx` or its password in the repository or in any committed file. The PFX is decoded into `$RUNNER_TEMP`, consumed by `dotnet nuget sign`, and shredded immediately after use.
+- Signing happens **before** `dotnet nuget push` and before `gh release create`, so a missing secret or a signing failure aborts the release without publishing an unsigned package or tagging a partial release.
+- A `SHA256SUMS` manifest is generated from the signed artifacts and attached to the GitHub Release. Format is the standard `<hex>  <filename>` consumed by `sha256sum -c`.
+- Do not change the signing timestamp authority (`http://timestamp.digicert.com`) without a documented reason — without a valid timestamp the signature becomes invalid once the certificate expires.
 
 ## Comments
 
