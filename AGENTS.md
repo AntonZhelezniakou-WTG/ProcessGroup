@@ -202,6 +202,13 @@
 - A `SHA256SUMS` manifest is generated from the signed artifacts and attached to the GitHub Release. Format is the standard `<hex>  <filename>` consumed by `sha256sum -c`.
 - Do not change the signing timestamp authority (`http://timestamp.digicert.com`) without a documented reason — without a valid timestamp the signature becomes invalid once the certificate expires.
 
+## Security Scanning
+
+- `.github/workflows/codeql.yml` runs GitHub CodeQL against the C# codebase on pull requests, pushes to `main`, and weekly on a cron schedule. It uses the `security-and-quality` query suite (broader than the default `security-extended`) so injection patterns, unsafe interop, and quality issues are surfaced.
+- Build mode is `manual` (the workflow runs `dotnet build ProcessGroup.slnx`) because autobuild does not always select the right SDK or solution format.
+- CodeQL findings appear under the repository's **Security → Code scanning** tab. Treat new alerts the same as build warnings — investigate and fix or, when a finding is a confirmed false positive, dismiss it in the GitHub UI with a written justification.
+- Do not silence or skip CodeQL by editing the workflow to exclude paths or queries without explicit approval — the smaller the suppression surface, the more value the scan provides.
+
 ## Comments
 
 - Minimize comments.

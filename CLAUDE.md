@@ -140,3 +140,7 @@ Signing requires two repo secrets:
 The PFX is decoded into `$RUNNER_TEMP`, used by `dotnet nuget sign --timestamper http://timestamp.digicert.com`, and shredded immediately after. If either secret is missing, the workflow fails at the sign step — the push to GitHub Packages and the GitHub Release creation never run, so an unsigned package cannot leak.
 
 The workflow then writes `SHA256SUMS` (one line per artifact, native `sha256sum -c` format) and attaches it to the GitHub Release alongside `.nupkg` / `.snupkg`. Verification flow for consumers is documented in [README.md](README.md).
+
+## Security scanning
+
+[.github/workflows/codeql.yml](.github/workflows/codeql.yml) runs GitHub CodeQL against the C# codebase on PR, push to `main`, and weekly. The query suite is `security-and-quality` (broader than the default `security-extended`) and `build-mode: manual` so the workflow drives an explicit `dotnet build ProcessGroup.slnx` — autobuild can pick the wrong SDK or miss `.slnx`. Findings land under repo **Security → Code scanning**. Treat new alerts like build warnings; if a finding is a confirmed false positive, dismiss it in the GitHub UI with a written justification rather than tweaking the workflow to hide it.
