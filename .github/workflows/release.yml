@@ -176,13 +176,19 @@ jobs:
           PFX_PASSWORD: ${{ secrets.CODE_SIGNING_PFX_PASSWORD }}
         run: |
           set -euo pipefail
+          shopt -s nullglob
           if [[ -z "${PFX_BASE64:-}" || -z "${PFX_PASSWORD:-}" ]]; then
             echo "::error::CODE_SIGNING_PFX_BASE64 / CODE_SIGNING_PFX_PASSWORD secrets are not configured."
             exit 1
           fi
+          pkgs=(./artifacts/*.nupkg ./artifacts/*.snupkg)
+          if [[ ${#pkgs[@]} -eq 0 ]]; then
+            echo "::error::No .nupkg or .snupkg files found in ./artifacts to sign."
+            exit 1
+          fi
           PFX_PATH="$RUNNER_TEMP/codesign.pfx"
-          echo "$PFX_BASE64" | base64 -d > "$PFX_PATH"
-          for pkg in ./artifacts/*.nupkg ./artifacts/*.snupkg; do
+          base64 -d <<<"$PFX_BASE64" > "$PFX_PATH"
+          for pkg in "${pkgs[@]}"; do
             dotnet nuget sign "$pkg" \
               --certificate-path "$PFX_PATH" \
               --certificate-password "$PFX_PASSWORD" \
@@ -193,8 +199,14 @@ jobs:
       - name: Generate SHA256SUMS
         run: |
           set -euo pipefail
+          shopt -s nullglob
           cd ./artifacts
-          sha256sum *.nupkg *.snupkg > SHA256SUMS
+          files=(*.nupkg *.snupkg)
+          if [[ ${#files[@]} -eq 0 ]]; then
+            echo "::error::No package files to hash in ./artifacts."
+            exit 1
+          fi
+          sha256sum "${files[@]}" > SHA256SUMS
           cat SHA256SUMS
 
       - name: Push to GitHub Packages
@@ -264,7 +276,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          set -euo pipefail
+          shopt -s nullglob
+          assets=(./artifacts/*.nupkg ./artifacts/*.snupkg ./artifacts/SHA256SUMS)
           gh release create "${{ steps.version.outputs.tag }}" \
             --title "${{ steps.version.outputs.tag }}" \
             --notes-file release-notes.md \
-            ./artifacts/*.nupkg ./artifacts/*.snupkg ./artifacts/SHA256SUMS
+            "${assets[@]}"

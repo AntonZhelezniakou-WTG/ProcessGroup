@@ -47,6 +47,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y clang zlib1g-dev
 
+      - name: Build library (resolves <Reference> for the smoke project)
+        run: dotnet build src/ProcessGroup/ProcessGroup.csproj -c Release
+
       - name: AOT publish smoke test
         run: dotnet publish tests/ProcessGroup.AotSmoke/ProcessGroup.AotSmoke.csproj -c Release -r linux-x64 -p:PublishAot=true
 
